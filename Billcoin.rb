@@ -10,7 +10,7 @@ class Billcoin
 		@path = file_path
 		@billcoins = Hash.new # ADDRESS (names) as hash, since it's case sensitive, no need to account for case
 		@billcoins['SYSTEM'] = Float::INFINITY
-		@current_timestamp = 0.0 # next ts must be greater, never the same or less
+		@current_timestamp = Time.at 0.0 # next ts must be greater, never the same or less
 		@prev_hash = "0"
 
 	end
@@ -22,9 +22,12 @@ class Billcoin
 	end
 
 	def parse_info(block)
+		info = Hash.new
+		info['original'] = block
+
 		block = block.split('|')	# splits the block by the regex '|'
 		raise "Invalid block format, should consist of only 5 elements" unless block.length == 5
-		info = Hash.new
+
 		info['id'] = block[0].to_i
 		info['prev_hash'] = block[1]
 		info['transaction'] = block[2].split(':')	# splits transaction by the regex ':'
@@ -79,16 +82,22 @@ class Billcoin
 
 			if not @billcoins.include? from
 				@billcoins[from] = 0
-			elsif not @billcoins.include? to
-				@billcoins[to] = 0
-			else				
-				@billcoins[from] -= amount
-				@billcoins[to] += amount
 			end
+			if not @billcoins.include? to
+				@billcoins[to] = 0
+			end	
+					
+			@billcoins[from] -= amount
+			@billcoins[to] += amount
 
 			if @billcoins[from] < 0
 				success = false
 				error_msg = "Invalid block, address #{from} has #{@billcoins[from]} billcoins!"
+			end
+
+			if @billcoins[to] < 0
+				success = false
+				error_msg = "Invalid block, address #{to} has #{@billcoins[to]} billcoins!"
 			end
 
 		}
@@ -99,7 +108,12 @@ class Billcoin
 	def validate_timestamps(info)
 		success = true
 		error_msg = ""
+		prev_ts = @current_timestamp
+		cur_ts = Time.at info['ts'].to_f
+		success = cur_ts > prev_ts
+		error_msg = "Previous timestamp #{prev_ts.to_s}.#{prev_ts.nsec} >= new timestamp #{cur_ts.to_i}.#{cur_ts.nsec}" unless success
 
+		@current_timestamp = cur_ts
 
 		return success, error_msg
 	end
@@ -110,7 +124,7 @@ class Billcoin
 		correct_hash = get_hash(string_to_hash)
 		#puts "correct_hash:" + correct_hash + "END" + correct_hash.length.to_s
 		#puts "self_hash:" + info['self_hash'] + "END" + info['self_hash'].length.to_s
-		return correct_hash.strip === info['self_hash'].strip
+		return correct_hash.strip == info['self_hash'].strip
 	end
 
 	def validate_first_block(f_info)
@@ -126,16 +140,16 @@ class Billcoin
 			error_msg = "Transaction count for first block was #{f_info['transaction'].length}, should be 1"
 			success = false
 		elsif not validate_hash(f_info)
-			error_msg = "Hash for first block was #{f_info['self_hash']}, should be #{get_hash(get_string_to_hash(f_info))}"
+			error_msg = "String #{f_info['original']} hash set to #{f_info['self_hash']}, should be #{get_hash(get_string_to_hash(f_info))}"
 			success = false
 		else
 			# verifies the timestamps
 			success, error_msg = validate_timestamps(f_info)
-			error_msg = "" unless not success
+			#error_msg = "" unless not success
 
 			# updates the transaction logs
 			success, error_msg = update_billcoins(f_info)
-			error_msg = "" unless not success
+			#error_msg = "" unless not success
 
 		end
 
@@ -152,7 +166,7 @@ class Billcoin
 			error_msg = "Previous hash was #{info['prev_hash']}, should be #{@prev_hash}"
 			success = false
 		elsif not validate_hash(info)
-			error_msg = "Hash for this block was #{info['self_hash']}, should be #{get_hash(get_string_to_hash(info))}"
+			error_msg = "String #{info['original']} hash set to #{info['self_hash']}, should be #{get_hash(get_string_to_hash(info))}"
 			success = false
 		else
 			# verifies the timestamps
@@ -168,6 +182,10 @@ class Billcoin
 		return success, error_msg
 	end
 
+	def print_billcoins
+		@billcoins.each_pair {|k, v| puts "#{k}: #{v} billcoins"}
+	end
+
 	def validate_block_chain()
 		first_line = File.open(@path).first
 		# first line block number must be 0, and must only have one transaction
@@ -180,7 +198,6 @@ class Billcoin
 		end
 
 		# update the values
-		@current_timestamp = ""
 		@prev_hash = first_block['self_hash']
 
 		File.readlines(@path).drop(1).each.with_index do |line, line_num|
@@ -196,7 +213,6 @@ class Billcoin
 			end
 
 			# update the values
-			@current_timestamp = ""
 			@prev_hash = block['self_hash']
 
 		end
