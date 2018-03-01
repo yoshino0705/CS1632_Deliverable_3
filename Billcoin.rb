@@ -196,7 +196,7 @@ class Billcoin
 	end
 
 	def print_billcoins
-		@billcoins.each_pair {|k, v| puts "#{k}: #{v} billcoins"}
+		@billcoins.each_pair {|k, v| puts "#{k}: #{v} billcoins" unless k=="SYSTEM"}	# don't print SYSTEM billcoin count
 	end
 
 	def validate_block_chain()
