@@ -9,6 +9,7 @@ class Billcoin
 		# everyone should start with 0 bill coins, unless SYSTEM grants
 		@path = file_path
 		@billcoins = Hash.new # ADDRESS (names) as hash, since it's case sensitive, no need to account for case
+		@billcoins['SYSTEM'] = Float::INFINITY
 		@current_timestamp = 0.0 # next ts must be greater, never the same or less
 		@prev_hash = "0"
 
@@ -36,6 +37,22 @@ class Billcoin
 		return "#{info['id']}|#{info['prev_hash']}|#{info['transaction'].join(':')}|#{info['ts']}"
 	end
 
+	def validate_address(address)
+		success = true
+		error_msg = ""
+		if address.length > 6 or address.length < 1
+			success = false
+			error_msg = "Invalid address length for #{address}, should be at most 6 alphabetic characters."
+		elsif not !address.match(/[^A-Za-z]/)
+			success = false
+			error_msg = "The address #{address} is not alphabetic."
+		else
+
+		end
+
+		return success, error_msg
+	end
+
 	def update_billcoins(info)
 		# reads the transactions and updates the @billcoins based on those transactions
 		# returns false if the update encounted errors
@@ -49,13 +66,21 @@ class Billcoin
 		transactions.each{ |t|
 			from, to = t.split('>')		# splits to "FROM", "TO(AMOUNT)"
 			to, amount = to.split('(')	# splits to "TO", "AMOUNT)"
+
+			# validate the addresses first
+			success, error_msg = validate_address(from)
+			break unless success
+
+			success, error_msg = validate_address(to)
+			break unless success
+
 			amount = amount.delete(')')	# removes the last ')'
 			amount = amount.to_i
 
 			if not @billcoins.include? from
-
+				@billcoins[from] = 0
 			elsif not @billcoins.include? to
-
+				@billcoins[to] = 0
 			else				
 				@billcoins[from] -= amount
 				@billcoins[to] += amount
@@ -83,7 +108,9 @@ class Billcoin
 		# passes in the parsed info
 		string_to_hash = get_string_to_hash(info)
 		correct_hash = get_hash(string_to_hash)
-		return correct_hash == info['self_hash']
+		#puts "correct_hash:" + correct_hash + "END" + correct_hash.length.to_s
+		#puts "self_hash:" + info['self_hash'] + "END" + info['self_hash'].length.to_s
+		return correct_hash.strip === info['self_hash'].strip
 	end
 
 	def validate_first_block(f_info)
@@ -102,19 +129,13 @@ class Billcoin
 			error_msg = "Hash for first block was #{f_info['self_hash']}, should be #{get_hash(get_string_to_hash(f_info))}"
 			success = false
 		else
-			# updates the transaction logs
-			s, e = update_billcoins(f_info)
-			if not s
-				success = s
-				error_msg = e
-			end
-
 			# verifies the timestamps
-			s, e = validate_timestamps(f_info)
-			if not s
-				success = s
-				error_msg = e
-			end
+			success, error_msg = validate_timestamps(f_info)
+			error_msg = "" unless not success
+
+			# updates the transaction logs
+			success, error_msg = update_billcoins(f_info)
+			error_msg = "" unless not success
 
 		end
 
@@ -127,27 +148,21 @@ class Billcoin
 		if info['id'] != line_number
 			error_msg = "Invalid block number #{info['id']}, should be #{line_number}"
 			success = false
-		elsif info['prev_hash'] != @prev_hash
+		elsif info['prev_hash'].strip != @prev_hash.strip
 			error_msg = "Previous hash was #{info['prev_hash']}, should be #{@prev_hash}"
 			success = false
 		elsif not validate_hash(info)
 			error_msg = "Hash for this block was #{info['self_hash']}, should be #{get_hash(get_string_to_hash(info))}"
 			success = false
-
 		else
-			# updates the transaction logs
-			s, e = update_billcoins(info)
-			if not s
-				success = s
-				error_msg = e
-			end
-
 			# verifies the timestamps
-			s, e = validate_timestamps(info)
-			if not s
-				success = s
-				error_msg = e
-			end
+			success, error_msg = validate_timestamps(info)
+			error_msg = "" unless not success
+
+			# updates the transaction logs
+			success, error_msg = update_billcoins(info)
+			error_msg = "" unless not success
+
 		end
 
 		return success, error_msg
@@ -164,6 +179,10 @@ class Billcoin
 			exit()
 		end
 
+		# update the values
+		@current_timestamp = ""
+		@prev_hash = first_block['self_hash']
+
 		File.readlines(@path).drop(1).each.with_index do |line, line_num|
 			# line_num will be used to check the block number
 			# line_num + 1 == block number
@@ -176,7 +195,13 @@ class Billcoin
 				exit()
 			end
 
+			# update the values
+			@current_timestamp = ""
+			@prev_hash = block['self_hash']
+
 		end
 
 		return nil
 	end
+
+end
