@@ -2,15 +2,13 @@
 # Wei-Hao Chen
 # Nick Sallinger
 
-require 'Time'
-
 class Billcoin
 	def initialize(file_path)
 		# everyone should start with 0 bill coins, unless SYSTEM grants
 		@path = file_path
 		@billcoins = Hash.new # ADDRESS (names) as hash, since it's case sensitive, no need to account for case
 		@billcoins['SYSTEM'] = Float::INFINITY
-		@current_timestamp = Time.at 0.0 # next ts must be greater, never the same or less
+		@current_timestamp = {'sec':-1,'nsec':-1} # next ts must be greater, never the same or less
 		@prev_hash = "0"
 
 	end
@@ -31,13 +29,14 @@ class Billcoin
 		info['id'] = block[0].to_i
 		info['prev_hash'] = block[1]
 		info['transaction'] = block[2].split(':')	# splits transaction by the regex ':'
-		info['ts'] = block[3]
+		info['ts'] = {'sec': block[3].split('.')[0].to_i, 'nsec': block[3].split('.')[1].to_i}
+		#puts info['ts']
 		info['self_hash'] = block[4]
 		return info
 	end
 
 	def get_string_to_hash(info)
-		return "#{info['id']}|#{info['prev_hash']}|#{info['transaction'].join(':')}|#{info['ts']}"
+		return "#{info['id']}|#{info['prev_hash']}|#{info['transaction'].join(':')}|#{info['ts'][:sec]}.#{info['ts'][:nsec]}".strip
 	end
 
 	def validate_address(address)
@@ -86,18 +85,24 @@ class Billcoin
 			if not @billcoins.include? to
 				@billcoins[to] = 0
 			end	
-					
+
 			@billcoins[from] -= amount
 			@billcoins[to] += amount
+
+			#puts "#{from}: #{@billcoins[from]} sent #{to}: #{@billcoins[to]}"
 
 			if @billcoins[from] < 0
 				success = false
 				error_msg = "Invalid block, address #{from} has #{@billcoins[from]} billcoins!"
+				#puts error_msg
+				return success, error_msg
 			end
 
 			if @billcoins[to] < 0
 				success = false
 				error_msg = "Invalid block, address #{to} has #{@billcoins[to]} billcoins!"
+				#puts error_msg
+				return success, error_msg
 			end
 
 		}
@@ -106,15 +111,15 @@ class Billcoin
 	end
 
 	def validate_timestamps(info)
-		success = true
-		error_msg = ""
 		prev_ts = @current_timestamp
-		cur_ts = Time.at info['ts'].to_f
-		success = cur_ts > prev_ts
-		error_msg = "Previous timestamp #{prev_ts.to_s}.#{prev_ts.nsec} >= new timestamp #{cur_ts.to_i}.#{cur_ts.nsec}" unless success
+		cur_ts = info['ts']
+		success = (cur_ts[:sec] >= prev_ts[:sec]) && (cur_ts[:nsec] > prev_ts[:nsec])  # seconds can be the same, but nanoseconds must be greater, I tried 'and' but only '&&' works
+		#puts success
+		error_msg = "Previous timestamp #{prev_ts[:sec]}.#{prev_ts[:nsec]} >= new timestamp #{cur_ts[:sec]}.#{cur_ts[:nsec]}" unless success
 
 		@current_timestamp = cur_ts
-
+		#puts "Seconds #{cur_ts[:sec]} >= #{prev_ts[:sec]}: #{cur_ts[:sec] >= prev_ts[:sec]} where success: #{success}"
+		#puts "Nano #{cur_ts[:nsec]} > #{prev_ts[:nsec]}: #{cur_ts[:nsec] > prev_ts[:nsec]} where success: #{success}"
 		return success, error_msg
 	end
 
@@ -122,35 +127,39 @@ class Billcoin
 		# passes in the parsed info
 		string_to_hash = get_string_to_hash(info)
 		correct_hash = get_hash(string_to_hash)
-		#puts "correct_hash:" + correct_hash + "END" + correct_hash.length.to_s
-		#puts "self_hash:" + info['self_hash'] + "END" + info['self_hash'].length.to_s
+		#puts string_to_hash
 		return correct_hash.strip == info['self_hash'].strip
 	end
 
 	def validate_first_block(f_info)
 		error_msg = ""
 		success = true
+
+		# verifies the timestamps
+		success, error_msg = validate_timestamps(f_info)
+		return success, error_msg unless success
+
 		if f_info['id'] != 0
 			error_msg = "Invalid block number #{f_info['id']}, should be 0"
 			success = false
+			return success, error_msg
 		elsif f_info['prev_hash'] != "0"
 			error_msg = "Previous hash was #{f_info['prev_hash']}, should be 0"
 			success = false
+			return success, error_msg
 		elsif f_info['transaction'].length != 1
 			error_msg = "Transaction count for first block was #{f_info['transaction'].length}, should be 1"
 			success = false
+			return success, error_msg
 		elsif not validate_hash(f_info)
-			error_msg = "String #{f_info['original']} hash set to #{f_info['self_hash']}, should be #{get_hash(get_string_to_hash(f_info))}"
+			error_msg = "String #{f_info['original'].strip} hash set to #{f_info['self_hash'].strip}, should be #{get_hash(get_string_to_hash(f_info))}"
 			success = false
-		else
-			# verifies the timestamps
-			success, error_msg = validate_timestamps(f_info)
-			#error_msg = "" unless not success
-
+			return success, error_msg
+		else			
 			# updates the transaction logs
 			success, error_msg = update_billcoins(f_info)
 			#error_msg = "" unless not success
-
+			return success, error_msg unless success
 		end
 
 		return success, error_msg
@@ -159,24 +168,28 @@ class Billcoin
 	def validate_block(info, line_number)
 		error_msg = ""
 		success = true
+
+		# verifies the timestamps
+		success, error_msg = validate_timestamps(info)
+		return success, error_msg unless success
+
 		if info['id'] != line_number
 			error_msg = "Invalid block number #{info['id']}, should be #{line_number}"
 			success = false
+			return success, error_msg
 		elsif info['prev_hash'].strip != @prev_hash.strip
 			error_msg = "Previous hash was #{info['prev_hash']}, should be #{@prev_hash}"
 			success = false
+			return success, error_msg
 		elsif not validate_hash(info)
-			error_msg = "String #{info['original']} hash set to #{info['self_hash']}, should be #{get_hash(get_string_to_hash(info))}"
+			error_msg = "String #{info['original'].strip} hash set to #{info['self_hash'].strip}, should be #{get_hash(get_string_to_hash(info))}"
 			success = false
+			return success, error_msg
 		else
-			# verifies the timestamps
-			success, error_msg = validate_timestamps(info)
-			error_msg = "" unless not success
-
 			# updates the transaction logs
 			success, error_msg = update_billcoins(info)
-			error_msg = "" unless not success
-
+			#error_msg = "" unless not success
+			return success, error_msg unless success
 		end
 
 		return success, error_msg
