@@ -113,7 +113,15 @@ class Billcoin
 	def validate_timestamps(info)
 		prev_ts = @current_timestamp
 		cur_ts = info['ts']
-		success = (cur_ts[:sec] >= prev_ts[:sec]) && (cur_ts[:nsec] > prev_ts[:nsec])  # seconds can be the same, but nanoseconds must be greater, I tried 'and' but only '&&' works
+
+		if cur_ts[:sec] > prev_ts[:sec]
+			success = true
+		elsif cur_ts[:sec] == prev_ts[:sec]
+			(cur_ts[:nsec] > prev_ts[:nsec]) ? success = true : success = false
+		else
+			success = false
+		end
+				
 		#puts success
 		error_msg = "Previous timestamp #{prev_ts[:sec]}.#{prev_ts[:nsec]} >= new timestamp #{cur_ts[:sec]}.#{cur_ts[:nsec]}" unless success
 
