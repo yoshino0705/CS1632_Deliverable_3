@@ -3,6 +3,8 @@
 # Nick Sallinger
 
 class Billcoin
+	attr_accessor :path, :billcoins, :current_timestamp, :prev_hash
+
 	def initialize(file_path)
 		# everyone should start with 0 bill coins, unless SYSTEM grants
 		@path = file_path
@@ -13,18 +15,24 @@ class Billcoin
 
 	end
 
+	# returns the hash of the given string
 	def get_hash(s)
 		vals = s.unpack('U*').map {|x| ((x ** 2000) * ((x + 2) ** 21) - ((x + 5) ** 3))}
 		vals = vals.inject(0, :+) % 65536
 		return vals.to_s(16)
 	end
 
+	# parses a block string into an useful information dictionary
 	def parse_info(block)
 		info = Hash.new
 		info['original'] = block
 
 		block = block.split('|')	# splits the block by the regex '|'
-		raise "Invalid block format, should consist of only 5 elements" unless block.length == 5
+		if block.length != 5
+			puts "Invalid block format, should consist of only 5 elements"
+			exit()
+		end
+		
 
 		info['id'] = block[0].to_i
 		info['prev_hash'] = block[1]
@@ -35,10 +43,13 @@ class Billcoin
 		return info
 	end
 
+	# returns string containing the info necessary to hash
 	def get_string_to_hash(info)
 		return "#{info['id']}|#{info['prev_hash']}|#{info['transaction'].join(':')}|#{info['ts'][:sec]}.#{info['ts'][:nsec]}".strip
 	end
 
+	# validates the address of a transaction
+	# where it must be alphabetic and less than 6 characters and more than 1 character
 	def validate_address(address)
 		success = true
 		error_msg = ""
@@ -55,6 +66,7 @@ class Billcoin
 		return success, error_msg
 	end
 
+	# updates the dictionary that keeps track of each address's billcoins
 	def update_billcoins(info)
 		# reads the transactions and updates the @billcoins based on those transactions
 		# returns false if the update encounted errors
@@ -110,6 +122,8 @@ class Billcoin
 		return success, error_msg
 	end
 
+	# validates the timestamp
+	# where the given timestamp must be greater than the previous timestamp
 	def validate_timestamps(info)
 		prev_ts = @current_timestamp
 		cur_ts = info['ts']
@@ -131,6 +145,8 @@ class Billcoin
 		return success, error_msg
 	end
 
+	# validates the hash part of the 'info' dictionary given
+	# where the method will compare the correct hash to the given one
 	def validate_hash(info)
 		# passes in the parsed info
 		string_to_hash = get_string_to_hash(info)
@@ -139,6 +155,10 @@ class Billcoin
 		return correct_hash.strip == info['self_hash'].strip
 	end
 
+	# validates the first block of the chain
+	# it had to be done separate since the first block (genesis block) must 
+	# only have one transaction
+	# and its previous hash is 0
 	def validate_first_block(f_info)
 		error_msg = ""
 		success = true
@@ -173,6 +193,8 @@ class Billcoin
 		return success, error_msg
 	end
 
+	# validates the rest of the blocks in the chain
+	# which are not the first block
 	def validate_block(info, line_number)
 		error_msg = ""
 		success = true
@@ -203,10 +225,15 @@ class Billcoin
 		return success, error_msg
 	end
 
+	# prints how many billcoins each address has
+	# excludes the system's billcoin count,
+	# which is infinity
 	def print_billcoins
 		@billcoins.each_pair {|k, v| puts "#{k}: #{v} billcoins" unless k=="SYSTEM"}	# don't print SYSTEM billcoin count
 	end
 
+	# validates the block chain read from the 'path'
+	# as a whole
 	def validate_block_chain()
 		first_line = File.open(@path).first
 		# first line block number must be 0, and must only have one transaction
