@@ -5,8 +5,7 @@
 class Billcoin
 	attr_accessor :path, :billcoins, :current_timestamp, :prev_hash
 
-	def initialize(file_path)
-		# everyone should start with 0 bill coins, unless SYSTEM grants
+	def initialize(file_path)		
 		@path = file_path
 		@billcoins = Hash.new # ADDRESS (names) as hash, since it's case sensitive, no need to account for case
 		@billcoins['SYSTEM'] = Float::INFINITY
@@ -29,10 +28,10 @@ class Billcoin
 
 		block = block.split('|')	# splits the block by the regex '|'
 		if block.length != 5
-			puts "Invalid block format, should consist of only 5 elements"
+			puts 'Invalid block format, should consist of only 5 elements'
+			puts 'BLOCKCHAIN INVALID'
 			exit()
-		end
-		
+		end		
 
 		info['id'] = block[0].to_i
 		info['prev_hash'] = block[1]
@@ -66,13 +65,26 @@ class Billcoin
 		return success, error_msg
 	end
 
+	# validates the billcoin count of the address
+	def validate_billcoins(address)
+		if not @billcoins.include? address
+			return false, "Internal Error: #{address} does not exist in the billcoin dictionary"
+		end
+
+		if @billcoins[address] < 0
+			success = false
+			error_msg = "Invalid block, address #{address} has #{@billcoins[address]} billcoins!"
+			return success, error_msg
+		end
+
+		return true, ''
+	end
+
 	# updates the dictionary that keeps track of each address's billcoins
 	def update_billcoins(info)
 		# reads the transactions and updates the @billcoins based on those transactions
 		# returns false if the update encounted errors
 		# returns true if the update was a success
-		# creating an extra method for verifying the transactions would need to loop through
-		# the entire dictionary, which would be time consuming
 		success = true
 		error_msg = ""
 		transactions = info['transaction']
@@ -103,20 +115,11 @@ class Billcoin
 
 			#puts "#{from}: #{@billcoins[from]} sent #{to}: #{@billcoins[to]}"
 
-			if @billcoins[from] < 0
-				success = false
-				error_msg = "Invalid block, address #{from} has #{@billcoins[from]} billcoins!"
-				#puts error_msg
-				return success, error_msg
-			end
+			success, error_msg = validate_billcoins(from)
+			return success, error_msg unless success
 
-			if @billcoins[to] < 0
-				success = false
-				error_msg = "Invalid block, address #{to} has #{@billcoins[to]} billcoins!"
-				#puts error_msg
-				return success, error_msg
-			end
-
+			success, error_msg = validate_billcoins(to)
+			return success, error_msg unless success
 		}
 
 		return success, error_msg
@@ -235,6 +238,12 @@ class Billcoin
 	# validates the block chain read from the 'path'
 	# as a whole
 	def validate_block_chain()
+		# exits if file doesn't exist
+		if not File.exist? @path
+			puts 'The file does not exist, the program will exit' ; exit 
+		end
+
+
 		first_line = File.open(@path).first
 		# first line block number must be 0, and must only have one transaction
 		first_block = parse_info(first_line)
