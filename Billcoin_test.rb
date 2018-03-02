@@ -120,29 +120,49 @@ class Billcoin_test < Minitest::Test
 
 	# UNIT TESTS FOR METHOD validate_timestamps()
 
-	def test_validate_timestamps
+	def test_validate_timestamps_true
+		info = {'ts'=>{'sec': 50, 'nsec':-1}}
+		s,e = @bc.validate_timestamps info
+		assert_equal s, true
+	end
 
+	def test_validate_timestamps_false
+		info = {'ts'=>{'sec': -1, 'nsec':-1}}
+		s,e = @bc.validate_timestamps info
+		assert_equal s, false
 	end
 
 
 	# UNIT TESTS FOR METHOD validate_hash()
 
-	def test_validate_hash
+	def test_validate_hash_true
+		info = @bc.parse_info '0|test_prev_hash|test_transaction|0.0|b325'
+		s,e = @bc.validate_hash info
+		assert_equal s, true
+	end
 
+	def test_validate_hash_false
+		info = @bc.parse_info 'test_block_num|test_prev_hash|test_transaction|test_timestamp|l33t'
+		s,e = @bc.validate_hash info
+		assert_equal s, false
 	end
 
 
 	# UNIT TESTS FOR METHOD validate_first_block()
 
 	def test_validate_first_block
-
+		info = @bc.parse_info '0|0|SYSTEM>Gaozu(100)|1518893687.329767000|fd18'
+		s,e = @bc.validate_first_block info
+		assert_equal s, true
 	end
 
 
 	# UNIT TESTS FOR METHOD validate_block()
 
 	def test_validate_block
-
+		info = @bc.parse_info '0|0|SYSTEM>Gaozu(100)|1518893687.329767000|fd18'
+		s,e = @bc.validate_block info, 0
+		assert_equal s, true
 	end
 
 end
