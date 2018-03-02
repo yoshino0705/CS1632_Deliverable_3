@@ -1,0 +1,35 @@
+Days              : 0
+Hours             : 0
+Minutes           : 0
+Seconds           : 23
+Milliseconds      : 473
+Ticks             : 234734578
+TotalDays         : 0.000271683539351852
+TotalHours        : 0.00652040494444444
+TotalMinutes      : 0.391224296666667
+TotalSeconds      : 23.4734578
+TotalMilliseconds : 23473.4578
+
+Days              : 0
+Hours             : 0
+Minutes           : 0
+Seconds           : 23
+Milliseconds      : 669
+Ticks             : 236692370
+TotalDays         : 0.000273949502314815
+TotalHours        : 0.00657478805555556
+TotalMinutes      : 0.394487283333333
+TotalSeconds      : 23.669237
+TotalMilliseconds : 23669.237
+
+Days              : 0
+Hours             : 0
+Minutes           : 0
+Seconds           : 23
+Milliseconds      : 699
+Ticks             : 236993130
+TotalDays         : 0.000274297604166667
+TotalHours        : 0.0065831425
+TotalMinutes      : 0.39498855
+TotalSeconds      : 23.699313
+TotalMilliseconds : 23699.313
