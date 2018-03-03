@@ -13,6 +13,7 @@ class Billcoin_test < Minitest::Test
 		refute_nil @bc
 	end
 
+	# tests if object created correctly
 	def test_billcoin_is_billcoin
 		assert @bc.is_a?(Billcoin)
 	end
@@ -168,5 +169,19 @@ class Billcoin_test < Minitest::Test
 		s,e = @bc.validate_block info, 0
 		assert_equal s, true
 	end
+
+	#UNIT TESTS FOR METHOD print_bill_coins
+
+	def print_billcoins
+		@billcoins.each_pair {|k, v| puts "#{k}: #{v} billcoins" unless k=="SYSTEM"}	# don't print SYSTEM billcoin count
+	end
+
+	def test_correct_billcoins
+
+		@bc.billcoins['test_address'] = '1234'
+		assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}
+		
+	end
+
 
 end
