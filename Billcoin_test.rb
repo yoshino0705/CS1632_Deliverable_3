@@ -172,15 +172,20 @@ class Billcoin_test < Minitest::Test
 
 	#UNIT TESTS FOR METHOD print_bill_coins
 
-	def print_billcoins
-		@billcoins.each_pair {|k, v| puts "#{k}: #{v} billcoins" unless k=="SYSTEM"}	# don't print SYSTEM billcoin count
+	def test_correct_billcoins
+		@bc.billcoins['test_address'] = '1234'
+		assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}	
 	end
 
-	def test_correct_billcoins
+	#UNIT TESTS FOR METHOD validate_block_chain
 
-		@bc.billcoins['test_address'] = '1234'
-		assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}
-		
+	def test_bad_path
+		assert_raises(SystemExit){ @bc.validate_block_chain }
+	end
+
+	def test_bad_path2
+		def File.exists?; true; end
+		assert_raises(SystemExit){ @bc.validate_block_chain }
 	end
 
 
