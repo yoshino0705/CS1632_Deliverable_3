@@ -13,6 +13,10 @@ class Billcoin_test < Minitest::Test
 		refute_nil @bc
 	end
 
+	def test_billcoin_is_billcoin
+		assert @bc.is_a?(Billcoin)
+	end
+
 	# UNIT TESTS FOR METHOD get_hash()
 
 	def test_get_hash_test_string
