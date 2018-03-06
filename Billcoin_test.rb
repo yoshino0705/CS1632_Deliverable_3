@@ -170,23 +170,52 @@ class Billcoin_test < Minitest::Test
 		assert_equal s, true
 	end
 
-	#UNIT TESTS FOR METHOD print_bill_coins
+	def test_validate_block_unsuccessful
 
-	def test_correct_billcoins
-		@bc.billcoins['test_address'] = '1234'
-		assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}	
+		#def @bc.parse_info; "test"; end
+		def @bc.validate_timestamps(info); false;"error"; end
+
+		s,e = @bc.validate_block "test", 0
+		assert_equal "Invalid block number , should be 0", e
+
 	end
+
+	#test that timestamp is validated, hash is validated, and billcoins are updated
+	def test_validate_block_mock
+
+	end
+
+
+
+
+
+
+
+	# #UNIT TESTS FOR METHOD print_bill_coins
+
+	# def test_correct_billcoins
+	# 	@bc.billcoins['test_address'] = '1234'
+	# 	assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}	
+	# end
+
+	# #UNIT TESTS FOR update_billcoins
+	# def test_empty_transactions
+	# 	bcmock = Minitest::Mock::new
+
+	# end
 
 	#UNIT TESTS FOR METHOD validate_block_chain
 
-	def test_bad_path
-		assert_raises(SystemExit){ @bc.validate_block_chain }
-	end
+	# def test_bad_path
+	# 	assert_raises(SystemExit){ @bc.validate_block_chain }
+	# end
 
-	def test_bad_path2
-		def File.exists?; true; end
-		assert_raises(SystemExit){ @bc.validate_block_chain }
-	end
+	# def test_bad_path2
+	# 	def File.exists?; true; end
+	# 	assert_raises(SystemExit){ @bc.validate_block_chain }
+	# end
+
+
 
 
 end
