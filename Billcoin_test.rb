@@ -180,40 +180,42 @@ class Billcoin_test < Minitest::Test
 
 	end
 
-	#test that timestamp is validated, hash is validated, and billcoins are updated
-	def test_validate_block_mock
-
-	end
-
-
-
-
-
-
 
 	# #UNIT TESTS FOR METHOD print_bill_coins
 
-	# def test_correct_billcoins
-	# 	@bc.billcoins['test_address'] = '1234'
-	# 	assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}	
-	# end
+	def test_print_billcoins
+		@bc.billcoins['test_address'] = '1234'
+		assert_output(stdout = "test_address: 1234 billcoins\n"){@bc.print_billcoins}	
+	end
 
-	# #UNIT TESTS FOR update_billcoins
-	# def test_empty_transactions
-	# 	bcmock = Minitest::Mock::new
+	#UNIT TESTS FOR update_billcoins
+	def test_empty_transactions
 
-	# end
+	end
 
 	#UNIT TESTS FOR METHOD validate_block_chain
 
-	# def test_bad_path
-	# 	assert_raises(SystemExit){ @bc.validate_block_chain }
-	# end
+	#@path should fail first .exists? check
+	def test_bad_path
+		assert_raises(SystemExit){ suppress_output{@bc.validate_block_chain} }
+	end
 
-	# def test_bad_path2
-	# 	def File.exists?; true; end
-	# 	assert_raises(SystemExit){ @bc.validate_block_chain }
-	# end
+	#usea a correct filepath, should return nil if executed correctly
+	def test_bad_path2
+		bill = Billcoin::new "test_files/100.txt"
+		assert_nil bill.validate_block_chain
+	end
+
+	#HELPER FUNCTION TO TEMPORARILY REDIRECT STDOUTPUT
+	def suppress_output
+	  	original_stdout, original_stderr = $stdout.clone, $stderr.clone
+	  	$stderr.reopen File.new('/dev/null', 'w')
+	  	$stdout.reopen File.new('/dev/null', 'w')
+	  	yield
+	ensure
+	  	$stdout.reopen original_stdout
+	  	$stderr.reopen original_stderr
+	end
 
 
 
