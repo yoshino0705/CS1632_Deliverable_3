@@ -66,6 +66,9 @@ class Billcoin_test < Minitest::Test
 		assert_equal info['original'], 'test_block_num|test_prev_hash|test_transaction|test_timestamp|test_hash'
 	end
 
+	def test_parse_exit_on_fail
+		assert_raises(SystemExit){suppress_output{@bc.parse_info ''}}
+	end
 
 	# UNIT TEST FOR METHOD get_string_to_hash()
 
@@ -189,8 +192,17 @@ class Billcoin_test < Minitest::Test
 	end
 
 	#UNIT TESTS FOR update_billcoins
-	def test_empty_transactions
-
+	#test to check if success is returned true after successful transaction
+	def test_success_is_true
+		info = @bc.parse_info '0|0|SYSTEM>Gaozu(100)|1518893687.329767000|fd18'
+		s,e = @bc.update_billcoins info
+		assert s
+	end
+	#test error message is '' when there is a successful transaction
+	def test_error_msg_none
+		info = @bc.parse_info '0|0|SYSTEM>Gaozu(100)|1518893687.329767000|fd18'
+		s,e = @bc.update_billcoins info
+		assert_equal e, ''
 	end
 
 	#UNIT TESTS FOR METHOD validate_block_chain
